@@ -1,4 +1,5 @@
-#binaryEncipher C++ Library for Python
+# binaryEncipher (C++ Library for Python)
+
 Encrypts or decrypts file using LFSR algorithm
 
 ## Usage example
