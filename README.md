@@ -1,4 +1,4 @@
-# Stream_cipher
+# Stream cipher
 Python implementation of stream cipher using LFSR algorithm
 
 This algorithm uses key with length of 23. But it's easy to change.
@@ -32,4 +32,4 @@ Includes function for checking correctness of input cypher key.
 
 4. binaryEncipher.so
 
-C++ library extension. More info in `binaryEncipher/ folder`
+C++ library extension. More info in `binaryEncipher/` folder
