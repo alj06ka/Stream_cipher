@@ -1,4 +1,52 @@
-import numpy as np
+def convert_str_to_int(str_bits):
+    """
+    Converting string bit key to int value
+    :param str_bits: string consists 1 or 0
+    :return: int value of string of bits
+    """
+    result_bit_key = 0
+    while str_bits:
+        result_bit_key = (result_bit_key << 1) + int(str_bits[0])
+        str_bits = str_bits[1:]
+    return result_bit_key
+
+
+def get_file_bits(src_file, num_of_bits):
+    """
+    Function that represents file as sequence of bits
+    :param src_file: path to selected file
+    :param num_of_bits: quantity of bits needed to return
+    :return: string that consists list of :num_of_bits: bits
+    """
+    def _convert_byte_to_bits(_byte):
+        """
+        Converts byte to string that consists sequence of bits
+        :param _byte:
+        :return: sequence of bits
+        """
+        list_of_bits = []
+        for _ in range(8):
+            list_of_bits.append(str(_byte & 1))
+            _byte >>= 1
+        return ''.join(list(reversed(list_of_bits)))
+
+    _num_of_bits = 0
+    list_of_bits = []
+    with open(src_file, 'rb') as f:
+        while _num_of_bits < (num_of_bits):
+            file_byte = f.read(1)
+            list_of_bits.append(_convert_byte_to_bits(file_byte[0]))
+            _num_of_bits += 8
+    return ' '.join(list_of_bits)
+
+
+def handle_entry_bin(input_text):
+    """
+    removing all chars from string except 0 and 1
+    :param input_text: input string to handle
+    :return: string consisting 0 and 1
+    """
+    return ''.join([char for char in input_text if char in '01'])
 
 
 class Encryption:
@@ -7,11 +55,16 @@ class Encryption:
         Generating key for encryption
     """
 
-    def __init__(self, input_key, input_file_name, output_file_name, key):
-        self.input_file_name = input_file_name
-        self.output_file_name = output_file_name
-        self.pre_key = input_key
-        self.key = key
+    def __init__(self, key):
+        self.polinomial = [23, 5]
+        self.key = KeyGenerator(key, self.polinomial)
+
+    def convert(self, input_file_name, output_file_name):
+        with open(output_file_name, 'wb') as output_file:
+            for byte_list in open(input_file_name, 'rb'):
+                result_bytes = bytearray(byte_w ^ self.key.get_key_byte() for byte_w in byte_list)
+                output_file.write(result_bytes)
+        return True
 
 
 class KeyGenerator:
@@ -23,35 +76,50 @@ class KeyGenerator:
     """
 
     def __init__(self, key_str, polinomial):
-        self.key_list = self.convert_str_key_to_list(key_str)
+        self.key_list = self._convert_str_key_to_list(key_str)
+        self.key_bit = self._convert_str_key_to_bits(key_str)
         self.polinomial = polinomial
 
-    def convert_str_key_to_list(self, key_str):
-        return [int(key) for key in key_str]
+    @staticmethod
+    def _convert_str_key_to_bits(_key_str):
+        result_bit_key = 0
+        while _key_str:
+            result_bit_key = (result_bit_key << 1) + int(_key_str[0])
+            _key_str = _key_str[1:]
+        return result_bit_key
 
-    def generate_key(self, key, polinomial):
+    @staticmethod
+    def _convert_str_key_to_list(key_str):
+        return [int(bit) for bit in key_str]
 
-        def get_bit(key, bit):
-            return (key >> bit - 1) and 1
+    @staticmethod
+    def _insert_last_bit(_key, bit):
+        return (_key << 1) + bit
 
-        def insert_last_bit(key, bit):
-            return (key << 1) + bit
+    def get_key_byte(self):
+        """
+        :return: byte of generated key
+        """
 
-        current_long_key = np.array(key)
-        result_key_list = []
-        for _ in range((2 ** polinomial[0]) // 8):
-            current_key = 0
-            for _ in range(8):
-                current_key = insert_last_bit(current_key, current_long_key[0])
-                for exp in polinomial[1:]:
-                    current_long_key[0] ^= current_long_key[-exp]
-                current_long_key = np.roll(current_long_key, -1)
+        current_key = 0
+        for _ in range(8):
+            current_key = self._insert_last_bit(current_key, self.key_list[0])
+            for exp in self.polinomial[1:]:
+                self.key_list[0] ^= self.key_list[-exp]
+            self.key_list.append(self.key_list[0])
+            self.key_list.pop(0)
+        return current_key
 
-            result_key_list.append(current_key)
-        return result_key_list
+    def get_key_byte_by_shift(self):
+        def _get_bit(key, bit_position):
+            return (key >> (bit_position - 1)) & 1
 
-
-if __name__ == '__main__':
-    key = ['1111']
-    test = KeyGenerator(key, [4, 1])
-    # print(test.generate_key(key, [4, 1]))
+        current_key = 0
+        for _ in range(8):
+            new_bit = _get_bit(self.key_bit, self.polinomial[0])
+            current_key = self._insert_last_bit(current_key, new_bit)
+            for exp in self.polinomial[1:]:
+                new_bit ^= _get_bit(self.key_bit, exp)
+                self.key_bit &= 0b01111111111111111111111
+                self.key_bit = self._insert_last_bit(self.key_bit, new_bit)
+            return current_key
